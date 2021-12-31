@@ -21,7 +21,7 @@ class Tile(Sprite):
 
 
 class Hero(Sprite):
-    image = pygame.image.load('data/Player_Idle_Run_Stop.png').convert()
+    image = pygame.image.load('data/hero_1.png')
     group = pygame.sprite.GroupSingle()
 
     def update(self):
