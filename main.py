@@ -2,7 +2,7 @@ import pygame
 
 
 w, h = size = 600, 500
-tw, th = 60, 60
+tw, th = 40,40
 
 
 pygame.init()

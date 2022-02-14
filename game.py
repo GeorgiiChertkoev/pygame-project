@@ -2,7 +2,7 @@ import pygame
 import pytmx
 
 size = w, h = 672, 608
-FPS = 15
+FPS = 30
 MAPS_DIR = 'maps'
 MUSICS_DIR = 'music'
 TILE_SIZE = 32
