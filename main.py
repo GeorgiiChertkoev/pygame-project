@@ -1,64 +1,40 @@
 import pygame
 
 
-w, h = size = 600, 500
-tw, th = 40,40
+w, h = size = 600, 520
+tw, th = 40, 40
 
 
 pygame.init()
 screen = pygame.display.set_mode(size)
 
 
-def cut_sprite_list(path, row, col):
-    sheet = pygame.image.load(path)
-    rect = pygame.Rect(0, 0, sheet.get_width() // col,
-                       sheet.get_height() // row)
-
-    frames = []
-    for j in range(row):
-        for i in range(col):
-            frame_location = (rect.w * i, rect.h * j)
-            frames.append(sheet.subsurface(pygame.Rect(
-                frame_location, rect.size)))
-    return frames
-
-
-class Sprite(pygame.sprite.Sprite):
-    tick = 0
-    def __init__(self, pos):
-        super().__init__(self.group)
-        self.rect = self.image.get_rect(center=pos)
-
-
 class Tile(pygame.sprite.Sprite):
     floor = pygame.sprite.Group()
     walls = pygame.sprite.Group()
-    groups = floor, walls
-    bg = pygame.image.load('data/bg_tile2.png')
-    wall = pygame.Surface((60, 60))
-    wall.fill(0)
-    images = (bg, wall)
+    escape = pygame.sprite.Group()
+    groups = floor, walls, escape
 
-    def __init__(self, pos, value):
+    def __init__(self, pos, level, value):
         super().__init__(self.groups[value])
         self.value = value
-        self.image = Tile.images[value]
-        self.rect = self.image.get_rect(center=pos)
-
-    """
-    есть показатель верхняя ли это стенка
-    """
+        self.image = pygame.image.load(
+            f'data/level{str(level)}/{str(value)}.png')
+        if value == 2:
+            print(f'data/level{str(level)}/{str(value)}.png')
+        self.rect = self.image.get_rect(topleft=pos)
 
     def update(self):
         pass
 
 
-class Hero(Sprite):
-    # image = pygame.image.load('data/hero_1.png')
+class Hero(pygame.sprite.Sprite):
     group = pygame.sprite.GroupSingle()
-    stay_sprites = cut_sprite_list('data/hero_moves/idle.png', 1, 3)
-    image = stay_sprites[0]
-    cur_frame = 0
+    image = pygame.image.load('data/hero.png')
+
+    def __init__(self, pos):
+        super().__init__(self.group)
+        self.rect = self.image.get_rect(topleft=pos)
 
     def update(self):
         # if not pygame.sprite.spritecollideany(self, Platform.group):
@@ -71,27 +47,40 @@ class Hero(Sprite):
                  (keys[pygame.K_DOWN] - keys[pygame.K_UP] +
                   keys[pygame.K_s] - keys[pygame.K_w]) * 3)
 
-        if delta != (0, 0):
-            old_rect = self.rect
-            self.rect = self.rect.move(delta)
-            if pygame.sprite.spritecollideany(self, Tile.walls):
-                if any(pygame.sprite.collide_mask(self, sp) for sp in Tile.walls):
-                    self.rect = old_rect
-            self.cur_frame = 0
-
-        else:
-            if not self.tick % 6:
-                self.image = self.stay_sprites[self.cur_frame]
-                self.cur_frame = (self.cur_frame + 1) % 3
-        self.tick = (self.tick + 1) % 60
+        old_rect = self.rect
+        self.rect = self.rect.move(delta)
+        if (pygame.sprite.spritecollideany(self, Tile.walls)
+            or not screen.get_rect().contains(self.rect)):
+            self.rect = old_rect
 
 
-sc_center = pygame.math.Vector2(screen.get_rect().center)
+class Enemy(pygame.sprite.Sprite):
+    group = pygame.sprite.Group()
+    image = pygame.image.load('data/enemy.png')
+
+    def __init__(self, pos, move_style=(0, 0), speed=5):
+        # move_style = direction
+        super().__init__(self.group)
+        self.tick = 0
+        self.delta = pygame.math.Vector2(move_style) * 5
+        self.rect = self.image.get_rect(topleft=pos)
+
+    def update(self):
+        old_rect = self.rect
+        self.rect = self.rect.move(self.delta)
+        if (pygame.sprite.spritecollideany(self, Tile.walls)
+            or not screen.get_rect().contains(self.rect)):
+            self.delta *= -1
+            self.rect = old_rect
+
+
+
+
 clock = pygame.time.Clock()
 
 
-a = Hero(sc_center)
-print(a.rect)
+# a = Hero(sc_center)
+# print(a.rect)
 
 # рисуем карту
 # for row in range(0, h + 60, 60):
@@ -111,14 +100,15 @@ def load_map(filename):
 def draw_map(filename='1.map'):
     data, w, h = load_map(filename)
     surface = pygame.Surface((w * tw, h * th))
-    dmap = {'.': 0, '#': 1, '@': 2}
+    dmap = {'.': 0, '#': 1, '1': 2, '@': 3, '-':}
     for y in range(len(data)):
         for x in range(len(data[0])):
             value = dmap[data[y][x]]
-            if value == 2:
+            if value == 3:
+                # герой
                 hero = Hero((x * tw, y * th))
                 value = 0
-            Tile((x * tw, y * th), value)
+            Tile((x * tw, y * th), 1, value)
     Tile.floor.draw(surface)
     Tile.walls.draw(surface)
     return surface, hero
@@ -146,6 +136,9 @@ while running:
     Tile.walls.draw(screen)
     Tile.floor.update()
     Tile.floor.draw(screen)
+    Tile.escape.update()
+    Tile.escape.draw(screen)
+
 
     Hero.group.draw(screen)
     Hero.group.update()
