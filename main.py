@@ -8,6 +8,7 @@ FPS = 60
 
 
 pygame.init()
+pygame.event.set_blocked((pygame.MOUSEMOTION))
 screen = pygame.display.set_mode(size)
 manager = pygame_gui.UIManager(size)
 
@@ -15,33 +16,17 @@ heart = pygame.image.load("data/heart.png").convert_alpha()
 empty_heart = pygame.image.load("data/empty_heart1.png").convert_alpha()
 
 
-class Tile(pygame.sprite.Sprite):
-    floor = pygame.sprite.Group()
-    walls = pygame.sprite.Group()
-    escape = pygame.sprite.Group()
-    groups = floor, walls, escape
-
-    def __init__(self, pos, level, value):
-        super().__init__(self.groups[value])
-        self.value = value
-        self.image = pygame.image.load(
-            f'data/level{str(level)}/{str(value)}.png')
-        if value == 2:
-            print(f'data/level{str(level)}/{str(value)}.png')
-        self.rect = self.image.get_rect(topleft=pos)
-
-    def update(self):
-        pass
 
 
 class Hero(pygame.sprite.Sprite):
     group = pygame.sprite.GroupSingle()
     image = pygame.image.load('data/hero.png')
 
-    def __init__(self, pos):
+    def __init__(self, pos, level):
         super().__init__(self.group)
         self.hp = 3
         self.damaged = 0
+        self.level = level
         self.rect = self.image.get_rect(topleft=pos)
 
     def update(self):
@@ -60,11 +45,32 @@ class Hero(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(
                 self, Enemy.group) and not self.damaged:
             self.hp -= 1
-            print(self.hp)
-            self.damaged = 60
+            self.damaged = 30
         self.damaged = max(0, self.damaged - 1)
         if self.hp == 0:
             end_screen(1)
+
+        # print(pygame.sprite.spritecollide(self, Tile.walls, False))
+
+class Tile(pygame.sprite.Sprite):
+    floor = pygame.sprite.Group()
+    walls = pygame.sprite.Group()
+    escape = pygame.sprite.Group()
+    groups = floor, walls, escape
+
+    def __init__(self, pos, level, value):
+        super().__init__(self.groups[value])
+        group_all.add(self)
+        self.value = value
+        if value != 2:
+            self.image = pygame.image.load(
+                f'data/level{str(level)}/{str(value)}.png')
+        else:
+            self.image = pygame.image.load('data/escape.png')
+        self.rect = self.image.get_rect(topleft=pos)
+
+    def update(self):
+        pass
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -74,6 +80,7 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos, move_style=(0, 0), speed=0):
         # move_style = direction
         super().__init__(self.group)
+        group_all.add(self)
         self.tick = 0
         self.delta = pygame.math.Vector2(move_style) * speed
         self.image = Enemy.image
@@ -82,7 +89,8 @@ class Enemy(pygame.sprite.Sprite):
     def update(self):
         old_rect = self.rect
         self.rect = self.rect.move(self.delta)
-        if (pygame.sprite.spritecollideany(self, Tile.walls)
+        if (pygame.sprite.spritecollideany(self, Tile.walls) or
+            pygame.sprite.spritecollideany(self, Tile.escape)
                 or not screen.get_rect().contains(self.rect)):
             self.delta *= -1
             self.rect = old_rect
@@ -147,11 +155,11 @@ def intro():
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                exit()
+                # exit()
+                break
 
             if event.type == pygame_gui.UI_BUTTON_PRESSED:
                 return event.ui_element.text
-                break
             manager.process_events(event)
 
         pygame.transform.scale(pygame.image.load('data/fon.jpg').convert(),
@@ -193,7 +201,7 @@ def load_map(filename):
     return [x.rstrip().ljust(maxlen, '.') for x in lines], maxlen, len(lines)
 
 
-def draw_map(level=1):
+def draw_map(level):
     data, w, h = load_map(f'data/level{level}/map.txt')
     dmap = {'.': 0, '#': 1, '1': 2,
             '@': 3, '-': (1, 0),
@@ -205,12 +213,12 @@ def draw_map(level=1):
             pos = (x * tw, y * th)
             if value == 3:
                 # герой
-                hero = Hero(pos)
+                hero = Hero(pos, level)
                 value = 0
             if isinstance(value, tuple):
                 Enemy(pos, move_style=value, speed=4)
                 value = 0
-            Tile(pos, 1, value)
+            Tile(pos, level, value)
     Tile.floor.draw(screen)
     Tile.walls.draw(screen)
     Enemy.group.draw(screen)
@@ -225,6 +233,8 @@ def updater(hero):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+                exit()
+
 
         # screen.fill(0)
 
@@ -247,6 +257,7 @@ def updater(hero):
         pygame.display.update()
         clock.tick(FPS)
 
+
 def cleaner():
     Tile.walls.empty()
     Tile.floor.empty()
@@ -255,10 +266,12 @@ def cleaner():
     Enemy.group.empty()
     Hearts.group.empty()
 
+
 pygame.display.update()
 clock = pygame.time.Clock()
-
+group_all = pygame.sprite.Group
 
 # running = 0
 
 draw_map(intro())
+
