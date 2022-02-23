@@ -57,15 +57,15 @@ def intro():
         pygame.display.update()
 
 
-# clock = pygame.time.Clock()
-# print(intro())
-# run = True
-# # run = 0
-# while run:
-#     fps = clock.tick(60) / 1000
-#     for event in pygame.event.get():
-#         if event.type == pygame.QUIT:
-#             run = False
+clock = pygame.time.Clock()
+print(intro())
+run = True
+# run = 0
+while run:
+    fps = clock.tick(60) / 1000
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
 
-#     screen.blit(bg, (0, 0))
-#     pygame.display.update()
+    screen.blit(bg, (0, 0))
+    pygame.display.update()
