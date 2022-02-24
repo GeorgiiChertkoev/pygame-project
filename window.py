@@ -62,9 +62,8 @@ def levels_window():
         manager=manager)
 
     level2_but = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((200, 230), (200, 50)),
+        relative_rect=pygame.Rect((200, 130), (200, 50)),
         text='Уровень 2',
-
         manager=manager)
 
     level3_but = pygame_gui.elements.UIButton(
@@ -108,7 +107,7 @@ def intro():
             if event.type == pygame.QUIT:
                 exit_diolog()
             if event.type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
-                sys.exit()
+                exit()
             # if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
             #     return event.text.split()[1]
             if event.type == pygame_gui.UI_BUTTON_PRESSED:
@@ -142,13 +141,20 @@ def intro():
         pygame.display.update()
 
 
-clock = pygame.time.Clock()
-run = True
-while run:
-    fps = clock.tick(60) / 1000
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            run = False
+# clock = pygame.time.Clock()
+# run = True
+# while run:
+#     fps = clock.tick(60) / 1000
+#     for event in pygame.event.get():
+#         if event.type == pygame.QUIT:
+#             run = False
+#     intro()
 
-    screen.blit(bg, (0, 0))
-    pygame.display.update()
+#     screen.blit(bg, (0, 0))
+    # pygame.display.update()
+d = {'qwe': 1123}
+d1 = {
+    'asd': 1
+}
+
+print(d | d1)

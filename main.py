@@ -1,3 +1,5 @@
+import itertools
+import json
 import pygame
 import pygame_gui
 
@@ -5,16 +7,63 @@ import pygame_gui
 w, h = size = 600, 520
 tw, th = 40, 40
 FPS = 60
-
+levels_passed = {
+    '1': 0,
+    '2': 0,
+    '3': 0,
+    '4': 0,
+    '5': 0
+}
+data = {
+    'injured': 0,
+    'deaths': 0
+}
 
 pygame.init()
 pygame.event.set_blocked((pygame.MOUSEMOTION))
 screen = pygame.display.set_mode(size)
 manager = pygame_gui.UIManager(size)
 
+BUT_SOUNDC = pygame.mixer.Sound('data/sounds/click_button.wav')
+WALLPAPERS = itertools.cycle((
+    'art0.jpg', 'art1.jpg', 'art2.jpg',
+    'art3.jpg', 'art4.jpg', 'art5.jpg',
+    'art6.jpg', 'art7.jpg', 'art8.jpg',
+    'art9.jpg', 'art10.jpg', 'art11.jpg',
+    'art12.jpg', 'art13.jpg', 'art14.jpg',
+    'art15.jpg',))
 heart = pygame.image.load("data/heart.png").convert_alpha()
 empty_heart = pygame.image.load("data/empty_heart1.png").convert_alpha()
-menu_pic = 'data/fon.jpg'
+
+
+old_exit = exit
+
+
+def exit():
+    milliseconds = pygame.time.get_ticks()
+    hours, remainder = divmod(milliseconds // 1000, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    # data['time'] = [hours, minutes, seconds]
+    try:
+        with open('data/stats.json') as f:
+            old_d = json.load(f)
+            levels, old_d['levels'] = old_d['levels'], 0
+        has_old_data = True
+    except (FileNotFoundError, json.decoder.JSONDecodeError):
+        has_old_data = False
+
+    if has_old_data:
+        print(old_d)
+        print('\ndata')
+        print(data)
+        new_stats = {}
+    else:
+        new_stats = data
+        new_stats['levels'] = levels_passed
+    with open('data/stats.json', 'w') as f:
+        f.write(json.dumps(new_stats))
+
+    old_exit()
 
 
 class Hero(pygame.sprite.Sprite):
@@ -38,6 +87,7 @@ class Hero(pygame.sprite.Sprite):
         if self.complete > 10:
             n = self.complete // FPS
             if n == 3:
+                levels_passed[self.level] += 1
                 draw_map(intro())
             self.image = self.im_nums[n]
         elif self.complete == 0:
@@ -59,8 +109,10 @@ class Hero(pygame.sprite.Sprite):
                 self, Enemy.group) and not self.damaged:
             self.hp -= 1
             self.damaged = 30
+            data['injured'] += 1
         self.damaged = max(0, self.damaged - 1)
         if self.hp == 0:
+            data['deaths'] += 1
             end_screen(1)
         try:
             collided = pygame.sprite.spritecollide(self, group_all, False)
@@ -146,83 +198,181 @@ class Hearts(pygame.sprite.Sprite):
         self.old_hp == self.hero.hp
 
 
-def start_window():
+def exit_diolog():
+    exit_diolog = pygame_gui.windows.UIConfirmationDialog(
+        rect=pygame.Rect((150, 200), (300, 200)),
+        manager=manager,
+        window_title='Подтверждение',
+        action_long_desc='Вы уверены что хотите выйти?',
+        action_short_name='ОК',
+        blocking=True
+    )
+
+
+def main_window():
+    play_but = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((100, 320), (400, 50)),
+        text='Играть',
+        manager=manager)
+
+    statistics_but = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((100, 380), (400, 50)),
+        text='Статистика',
+        manager=manager)
+
+    exit_but = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((100, 440), (400, 50)),
+        text='Выход',
+        manager=manager)
+
+    wallpaper_but = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((540, 460), (60, 60)),
+        text='Обои',
+        manager=manager)
+
+
+def levels_window():
     level1_but = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((500, 50), (100, 50)),
-        text='1',
+        relative_rect=pygame.Rect((200, 50), (200, 50)),
+        text='Уровень 1',
+
         manager=manager)
 
     level2_but = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((500, 150), (100, 50)),
-        text='2',
+        relative_rect=pygame.Rect((200, 130), (200, 50)),
+        text='Уровень 2',
         manager=manager)
 
     level3_but = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((500, 250), (100, 50)),
-        text='3',
+        relative_rect=pygame.Rect((200, 210), (200, 50)),
+        text='Уровень 3',
+
         manager=manager)
 
     level4_but = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((500, 350), (100, 50)),
-        text='4',
+        relative_rect=pygame.Rect((200, 290), (200, 50)),
+        text='Уровень 4',
+
         manager=manager)
 
     level5_but = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((500, 450), (100, 50)),
-        text='5',
+        relative_rect=pygame.Rect((200, 370), (200, 50)),
+        text='Уровень 5',
+
+        manager=manager)
+
+    exit_but = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((200, 450), (200, 50)),
+        text='Назад',
         manager=manager)
 
 
 def intro():
-    start_window()
-    pygame.transform.scale(pygame.image.load(menu_pic).convert(),
-                           size, screen)
+    # start_window()
+    main_window_is_open = True
+    levels_window_is_open = False
+    wallpaper = next(WALLPAPERS)
+    pygame.mixer.music.load('data/music/menu_music.mp3')
+    pygame.mixer.music.play(-1)
     while True:
+        if main_window_is_open:
+            main_window()
+        if levels_window_is_open:
+            levels_window()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                exit_diolog()
+            if event.type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
                 exit()
-
+            # if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+            #     return event.text.split()[1]
             if event.type == pygame_gui.UI_BUTTON_PRESSED:
-                return event.ui_element.text
+                BUT_SOUNDC.set_volume(0.5)
+                BUT_SOUNDC.play()
+                if event.ui_element.text == 'Выход':
+                    exit_diolog()
+
+                elif event.ui_element.text == 'Играть':
+                    main_window_is_open = False
+                    levels_window_is_open = True
+                    manager.clear_and_reset()
+
+                elif event.ui_element.text == 'Обои':
+                    wallpaper = next(WALLPAPERS)
+
+                elif 'Уровень' in event.ui_element.text:
+                    return event.ui_element.text.split()[1]
+
+                elif event.ui_element.text == 'Назад':
+                    main_window_is_open = True
+                    levels_window_is_open = False
+                    manager.clear_and_reset()
+                elif event.ui_element.text == 'Статистика':
+                    print('asd')
+
             manager.process_events(event)
 
+        pygame.transform.scale(pygame.image.load(f'data/wallpapers/{wallpaper}').convert(),
+                               size, screen)
+        manager.update(clock.tick(FPS) / 10)
         manager.draw_ui(screen)
-        manager.update(clock.tick(FPS))
         pygame.display.update()
 
 
-def blackout(alpha=50, n=10):
+def time_in_game(form='str'):
+    # form == 'str' or 'surf'
+    milliseconds = pygame.time.get_ticks()
+    hours, remainder = divmod(milliseconds // 1000, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    human_format = 'время в игре {:02} ч {:02} мин {:02} сек'.format(
+        int(hours), int(minutes), int(seconds))
+    # print('{:03} ч {:02} мин {:02} сек'.format(int(hours), int(minutes), int(seconds)))
+    if form == 'str':
+        return human_format
+    elif form == 'surf':
+        font = pygame.font.Font(None, 25)
+        text = font.render(human_format, 0, 'white', 0)
+        return text
+
+
+def blackout(alpha=50, n=10, tick=30):
     transparent = pygame.Surface(size)
     transparent.set_alpha(alpha)
     # Плавный переход
     for i in range(n):
         screen.blit(transparent, (0, 0))
         pygame.display.flip()
-        pygame.time.wait(30)
+        pygame.time.wait(tick)
 
 
 def pause(level):
-    blackout(alpha=10, n=10)
+    blackout(alpha=10, n=10, tick=10)
     font = pygame.font.Font('data/fonts/casual.ttf', 30)
-    text = font.render('Игра приостановлена', 0, 'white', 0)
+    text = font.render('Игра приостановлена', 0, 'white')
     t_rect = text.get_rect()
     screen.blit(text, (w // 2 - t_rect.w // 2, 50))
 
     font = pygame.font.Font('data/fonts/casual.ttf', 20)
-    text = font.render(f'уровень {level}', 0, 'white', 0)
+    text = font.render(f'уровень {level}', 0, 'white')
     t_rect = text.get_rect()
     screen.blit(text, (w // 2 - t_rect.w // 2, 80))
 
     pygame.display.update()
 
-    while True:
-        event = pygame.event.wait()
-        if event.type == pygame.QUIT:
-            exit()
-        elif event.type == pygame.KEYDOWN:
-            break
-            # print(1)
-        # print(event)
+    run = True
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                run = False
+        surf = time_in_game(form='surf')
+        screen.blit(surf, (surf.get_rect(
+            bottomleft=screen.get_rect().bottomleft)))
+        pygame.display.update()
+
+        clock.tick(10)
 
 
 def end_screen(level):
@@ -232,13 +382,17 @@ def end_screen(level):
     blackout()
     screen.blit(text, (w // 2 - t_rect.w // 2, 50))
     pygame.display.update()
+    print(level_time.tick())
+    wait = 0
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit()
             if event.type in (pygame.KEYDOWN,
-                              pygame.MOUSEBUTTONDOWN):
+                              pygame.MOUSEBUTTONDOWN) and wait > FPS * 3:
                 draw_map(intro())
+        wait += 1
+        clock.tick(FPS)
 
 
 def load_map(filename):
@@ -268,6 +422,7 @@ def draw_map(level):
     Tile.floor.draw(screen)
     Tile.walls.draw(screen)
     Enemy.group.draw(screen)
+    level_time.tick()
 
     updater(hero, level)
 
@@ -317,6 +472,7 @@ def cleaner():
 
 pygame.display.update()
 clock = pygame.time.Clock()
+level_time = pygame.time.Clock()
 group_all = pygame.sprite.Group()
 
 # running = 0
