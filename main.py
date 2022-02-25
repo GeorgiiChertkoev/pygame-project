@@ -1,3 +1,5 @@
+import sys
+import datetime
 import itertools
 import json
 import pygame
@@ -36,34 +38,9 @@ heart = pygame.image.load("data/heart.png").convert_alpha()
 empty_heart = pygame.image.load("data/empty_heart1.png").convert_alpha()
 
 
-old_exit = exit
-
-
 def exit():
-    milliseconds = pygame.time.get_ticks()
-    hours, remainder = divmod(milliseconds // 1000, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    # data['time'] = [hours, minutes, seconds]
-    try:
-        with open('data/stats.json') as f:
-            old_d = json.load(f)
-            levels, old_d['levels'] = old_d['levels'], 0
-        has_old_data = True
-    except (FileNotFoundError, json.decoder.JSONDecodeError):
-        has_old_data = False
-
-    if has_old_data:
-        print(old_d)
-        print('\ndata')
-        print(data)
-        new_stats = {}
-    else:
-        new_stats = data
-        new_stats['levels'] = levels_passed
-    with open('data/stats.json', 'w') as f:
-        f.write(json.dumps(new_stats))
-
-    old_exit()
+    write_statistics()
+    sys.exit()
 
 
 class Hero(pygame.sprite.Sprite):
@@ -136,11 +113,8 @@ class Tile(pygame.sprite.Sprite):
         super().__init__(self.groups[value])
         group_all.add(self)
         self.value = value
-        if value != 2:
-            self.image = pygame.image.load(
-                f'data/level{str(level)}/{str(value)}.png')
-        else:
-            self.image = pygame.image.load('data/escape.png')
+        self.image = pygame.image.load(
+            f'data/level{str(level)}/{str(value)}.png')
         self.rect = self.image.get_rect(topleft=pos)
 
     def update(self):
@@ -198,6 +172,32 @@ class Hearts(pygame.sprite.Sprite):
         self.old_hp == self.hero.hp
 
 
+def write_statistics():
+    seconds = pygame.time.get_ticks() // 1000
+    data['time'] = seconds
+    try:
+        with open('data/stats.json') as f:
+            old_d = json.load(f)
+        has_old_data = True
+    except Exception:
+        has_old_data = False
+
+    if has_old_data:
+        new_stats = {
+            'injured': old_d['injured'] + data['injured'],
+            'deaths': old_d['deaths'] + data['deaths'],
+            'time': old_d['time'] + data['time']
+        }
+        new_stats['levels'] = {}
+        for k, v in levels_passed.items():
+            new_stats['levels'][k] = v + old_d['levels'][k]
+    else:
+        new_stats = data
+        new_stats['levels'] = levels_passed
+    with open('data/stats.json', 'w') as f:
+        f.write(json.dumps(new_stats))
+
+
 def exit_diolog():
     exit_diolog = pygame_gui.windows.UIConfirmationDialog(
         rect=pygame.Rect((150, 200), (300, 200)),
@@ -235,7 +235,6 @@ def levels_window():
     level1_but = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((200, 50), (200, 50)),
         text='Уровень 1',
-
         manager=manager)
 
     level2_but = pygame_gui.elements.UIButton(
@@ -269,6 +268,7 @@ def levels_window():
 
 def intro():
     # start_window()
+    manager.clear_and_reset()
     main_window_is_open = True
     levels_window_is_open = False
     wallpaper = next(WALLPAPERS)
@@ -309,7 +309,7 @@ def intro():
                     levels_window_is_open = False
                     manager.clear_and_reset()
                 elif event.ui_element.text == 'Статистика':
-                    print('asd')
+                    show_stats()
 
             manager.process_events(event)
 
@@ -327,7 +327,6 @@ def time_in_game(form='str'):
     minutes, seconds = divmod(remainder, 60)
     human_format = 'время в игре {:02} ч {:02} мин {:02} сек'.format(
         int(hours), int(minutes), int(seconds))
-    # print('{:03} ч {:02} мин {:02} сек'.format(int(hours), int(minutes), int(seconds)))
     if form == 'str':
         return human_format
     elif form == 'surf':
@@ -382,18 +381,67 @@ def end_screen(level):
     blackout()
     screen.blit(text, (w // 2 - t_rect.w // 2, 50))
     pygame.display.update()
-    print(level_time.tick())
     wait = 0
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit()
             if event.type in (pygame.KEYDOWN,
-                              pygame.MOUSEBUTTONDOWN) and wait > FPS * 3:
+                              pygame.MOUSEBUTTONDOWN) and wait > FPS * 1.5:
                 draw_map(intro())
         wait += 1
         clock.tick(FPS)
 
+
+def show_stats():
+    write_statistics()
+    header = pygame.font.Font('data/fonts/casual.ttf', 30)
+    text = header.render('Статистика', 0, 'white', 0)
+
+    t_rect = text.get_rect()
+    screen.fill(0)
+    screen.blit(text, (w // 2 - t_rect.w // 2, 30))
+
+    with open('data/stats.json') as f:
+        statistic = json.load(f)
+    inj = f"Ранен: {statistic['injured']}"
+    deaths = f"Убит: {statistic['deaths']}"
+    t_in_g = f"Время в игре: {str(datetime.timedelta(seconds=statistic['time']))}"
+    
+    font = pygame.font.Font(None, 30)
+    for i, text in enumerate((inj, deaths, t_in_g)):
+        text = font.render(text, 0, 'white', 0)
+        screen.blit(text, (40, i * 30 + 80))
+
+    header = pygame.font.Font('data/fonts/casual.ttf', 20)
+    text = header.render('Пройденные уровни', 0, 'white', 0)
+    t_rect = text.get_rect()
+    screen.blit(text, (w // 2 - t_rect.w // 2, 200))
+
+    for k, v in statistic['levels'].items():
+        text = font.render(f'уровень {k}:   {v}', 0, 'white', 0)
+        screen.blit(text, (40, int(k) * 30 + 210))
+
+
+    # screen.fill(0)
+    manager.clear_and_reset()
+    back = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((200, 450), (200, 50)),
+        text='Назад',
+        manager=manager)
+
+    while True:
+        for event in pygame.event.get():
+            manager.process_events(event)
+            if event.type == pygame.QUIT:
+                exit()
+            if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                draw_map(intro())
+            else:
+        manager.update(clock.tick(FPS) / 10)
+        manager.draw_ui(screen)
+        pygame.display.update()
+        clock.tick(FPS)
 
 def load_map(filename):
     lines = open(filename).readlines()
@@ -474,7 +522,5 @@ pygame.display.update()
 clock = pygame.time.Clock()
 level_time = pygame.time.Clock()
 group_all = pygame.sprite.Group()
-
-# running = 0
 
 draw_map(intro())
