@@ -432,11 +432,11 @@ def pause(level):
 
 
 def end_screen(level):
-    font = pygame.font.Font('data/fonts/casual.ttf', 20)
-    text = font.render('Вы проиграли', 0, 'red', 0)
+    font = pygame.font.Font('data/fonts/casual.ttf', 30)
+    text = font.render('Вы погибли', 0, 'red', 0)
     t_rect = text.get_rect()
     blackout()
-    screen.blit(text, (w // 2 - t_rect.w // 2, 50))
+    screen.blit(text, (w // 2 - t_rect.w // 2, 250))
     pygame.display.update()
     wait = 0
     while True:
@@ -579,5 +579,4 @@ clock = pygame.time.Clock()
 level_time = pygame.time.Clock()
 group_all = pygame.sprite.Group()
 
-congrats()
 draw_map(intro())
