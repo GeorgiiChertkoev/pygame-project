@@ -20,6 +20,7 @@ data = {
     'injured': 0,
     'deaths': 0
 }
+congratulated = [False]
 
 pygame.init()
 pygame.event.set_blocked((pygame.MOUSEMOTION))
@@ -65,6 +66,10 @@ class Hero(pygame.sprite.Sprite):
             n = self.complete // FPS
             if n == 3:
                 levels_passed[self.level] += 1
+                if (not congratulated[0] and 
+                    all([v for k, v in levels_passed.items()])):
+                    congrats()
+                    congratulated[0] = True
                 draw_map(intro())
             self.image = self.im_nums[n]
         elif self.complete == 0:
@@ -197,6 +202,59 @@ def write_statistics():
     with open('data/stats.json', 'w') as f:
         f.write(json.dumps(new_stats))
 
+def congrats():
+    screen.fill(0)
+    font = pygame.font.Font('data/fonts/casual.ttf', 30)
+    text = font.render('Поздравляем!', 0, 'white', 0)
+
+    screen.blit(text, (w // 2 - text.get_rect().w // 2, 50))
+
+    font = pygame.font.Font('data/fonts/casual.ttf', 20)
+
+    text = font.render('Вы справились со всеми 5 уровнями', 0, 'white', 0)
+    screen.blit(text, (w // 2 - text.get_rect().w // 2, 100))
+
+    text = font.render('и прошли игру!', 0, 'white', 0)
+    screen.blit(text, (w // 2 - text.get_rect().w // 2, 120))
+
+    font = pygame.font.Font('data/fonts/casual.ttf', 12)
+
+    text = font.render('(Даже у автора это не всегда получалось)', 0, 'white', 0)
+    screen.blit(text, (w // 2 - text.get_rect().w // 2, 150))
+
+    font = pygame.font.Font('data/fonts/casual.ttf', 20)
+
+    text = font.render('Мы, разработчики, надеемся, ', 0, 'white', 0)
+    screen.blit(text, (w // 2 - text.get_rect().w // 2, 220))
+
+    text = font.render('что вам понравилась наша "простенькая" игра,', 0, 'white', 0)
+    screen.blit(text, (w // 2 - text.get_rect().w // 2, 240))
+
+    text = font.render('и что вы проведете в ней еще немного времени.', 0, 'white', 0)
+    screen.blit(text, (w // 2 - text.get_rect().w // 2, 260))
+
+    font = pygame.font.Font('data/fonts/casual.ttf', 15)
+
+    text = font.render('Нажмите пробел, чтобы продолжить', 0, 'white', 0)
+    screen.blit(text, (w // 2 - text.get_rect().w // 2, 440))
+
+
+    font = pygame.font.Font('data/fonts/casual.ttf', 10)
+
+    text = font.render('Игра создана в рамках проекта по Pygame для Яндекс лиция 2021-2022', 0, 'white', 0)
+    screen.blit(text, (w // 2 - text.get_rect().w // 2, 500))
+
+    im = pygame.image.load('data/happy_hero.png')
+    screen.blit(im, (30, 300))
+    run = True
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                run = False
+        pygame.display.update()
+        clock.tick(10)
 
 def exit_diolog():
     exit_diolog = pygame_gui.windows.UIConfirmationDialog(
@@ -257,7 +315,6 @@ def levels_window():
     level5_but = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((200, 370), (200, 50)),
         text='Уровень 5',
-
         manager=manager)
 
     exit_but = pygame_gui.elements.UIButton(
@@ -522,4 +579,5 @@ clock = pygame.time.Clock()
 level_time = pygame.time.Clock()
 group_all = pygame.sprite.Group()
 
+congrats()
 draw_map(intro())

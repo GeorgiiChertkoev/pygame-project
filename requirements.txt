@@ -1,0 +1,3 @@
+json
+pygame
+pygame_gui
