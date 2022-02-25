@@ -437,7 +437,6 @@ def show_stats():
                 exit()
             if event.type == pygame_gui.UI_BUTTON_PRESSED:
                 draw_map(intro())
-            else:
         manager.update(clock.tick(FPS) / 10)
         manager.draw_ui(screen)
         pygame.display.update()
