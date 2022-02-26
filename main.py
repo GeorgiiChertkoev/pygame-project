@@ -20,7 +20,6 @@ data = {
     'injured': 0,
     'deaths': 0
 }
-congratulated = [False]
 
 pygame.init()
 pygame.event.set_blocked((pygame.MOUSEMOTION))
@@ -38,9 +37,9 @@ WALLPAPERS = itertools.cycle((
 MUSIC = [
     'miami_bar_fight.mp3',
     'fato_shadow_-_last_fight_theme.mp3',
-    'fato_shadow_-_fight_theme_metal.mp3',
+    'bosstheme_WO_low.mp3',
     'fight.wav',
-    'bosstheme_WO_low.mp3'
+    'fato_shadow_-_fight_theme_metal.mp3'
 ]
 heart = pygame.image.load("data/heart.png").convert_alpha()
 empty_heart = pygame.image.load("data/empty_heart1.png").convert_alpha()
@@ -73,8 +72,10 @@ class Hero(pygame.sprite.Sprite):
             n = self.complete // FPS
             if n == 3:
                 levels_passed[self.level] += 1
+                old_d = read_statistics()
+                now_stats = compare_stats(old_d, data)
                 if (not congratulated[0] and
-                        all([v for k, v in levels_passed.items()])):
+                        all([v for k, v in now_stats['levels'].items()])):
                     congrats()
                     congratulated[0] = True
                 draw_map(intro())
@@ -191,7 +192,7 @@ def read_statistics():
             d = json.load(f)
     except Exception:
         d = {
-            "injured": 0, "deaths": 0, "time": 0,
+            "injured": 0, "deaths": 0, "time": 0, 'congratulated': False,
             "levels": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
         }
     return d
@@ -201,6 +202,7 @@ def write_statistics():
     old_d = read_statistics()
 
     new_stats = compare_stats(old_d, data)
+    new_stats['congratulated'] = congratulated[0]
     with open('data/stats.json', 'w') as f:
         f.write(json.dumps(new_stats))
 
@@ -217,6 +219,7 @@ def compare_stats(old_d, data):
     new_stats['levels'] = {}
     for k, v in levels_passed.items():
         new_stats['levels'][k] = v + old_d['levels'][k]
+    new_stats['congratulated'] = old_d['congratulated']
     return new_stats
 
 
@@ -611,5 +614,8 @@ pygame.display.update()
 clock = pygame.time.Clock()
 level_time = pygame.time.Clock()
 group_all = pygame.sprite.Group()
+
+congratulated = [read_statistics()['congratulated']]
+
 
 draw_map(intro())
