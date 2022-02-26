@@ -66,8 +66,8 @@ class Hero(pygame.sprite.Sprite):
             n = self.complete // FPS
             if n == 3:
                 levels_passed[self.level] += 1
-                if (not congratulated[0] and 
-                    all([v for k, v in levels_passed.items()])):
+                if (not congratulated[0] and
+                        all([v for k, v in levels_passed.items()])):
                     congrats()
                     congratulated[0] = True
                 draw_map(intro())
@@ -177,30 +177,40 @@ class Hearts(pygame.sprite.Sprite):
         self.old_hp == self.hero.hp
 
 
-def write_statistics():
-    seconds = pygame.time.get_ticks() // 1000
-    data['time'] = seconds
+def read_statistics():
     try:
         with open('data/stats.json') as f:
-            old_d = json.load(f)
-        has_old_data = True
+            d = json.load(f)
     except Exception:
-        has_old_data = False
-
-    if has_old_data:
-        new_stats = {
-            'injured': old_d['injured'] + data['injured'],
-            'deaths': old_d['deaths'] + data['deaths'],
-            'time': old_d['time'] + data['time']
+        d = {
+            "injured": 0, "deaths": 0, "time": 0,
+            "levels": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
         }
-        new_stats['levels'] = {}
-        for k, v in levels_passed.items():
-            new_stats['levels'][k] = v + old_d['levels'][k]
-    else:
-        new_stats = data
-        new_stats['levels'] = levels_passed
+    return d
+
+
+def write_statistics():
+    old_d = read_statistics()
+
+    new_stats = compare_stats(old_d, data)
     with open('data/stats.json', 'w') as f:
         f.write(json.dumps(new_stats))
+
+
+def compare_stats(old_d, data):
+    seconds = pygame.time.get_ticks() // 1000
+    data['time'] = seconds
+
+    new_stats = {
+        'injured': old_d['injured'] + data['injured'],
+        'deaths': old_d['deaths'] + data['deaths'],
+        'time': old_d['time'] + data['time']
+    }
+    new_stats['levels'] = {}
+    for k, v in levels_passed.items():
+        new_stats['levels'][k] = v + old_d['levels'][k]
+    return new_stats
+
 
 def congrats():
     screen.fill(0)
@@ -219,7 +229,8 @@ def congrats():
 
     font = pygame.font.Font('data/fonts/casual.ttf', 12)
 
-    text = font.render('(Даже у автора это не всегда получалось)', 0, 'white', 0)
+    text = font.render(
+        '(Даже у автора это не всегда получалось)', 0, 'white', 0)
     screen.blit(text, (w // 2 - text.get_rect().w // 2, 150))
 
     font = pygame.font.Font('data/fonts/casual.ttf', 20)
@@ -227,10 +238,12 @@ def congrats():
     text = font.render('Мы, разработчики, надеемся, ', 0, 'white', 0)
     screen.blit(text, (w // 2 - text.get_rect().w // 2, 220))
 
-    text = font.render('что вам понравилась наша "простенькая" игра,', 0, 'white', 0)
+    text = font.render(
+        'что вам понравилась наша "простенькая" игра,', 0, 'white', 0)
     screen.blit(text, (w // 2 - text.get_rect().w // 2, 240))
 
-    text = font.render('и что вы проведете в ней еще немного времени.', 0, 'white', 0)
+    text = font.render(
+        'и что вы проведете в ней еще немного времени.', 0, 'white', 0)
     screen.blit(text, (w // 2 - text.get_rect().w // 2, 260))
 
     font = pygame.font.Font('data/fonts/casual.ttf', 15)
@@ -238,10 +251,11 @@ def congrats():
     text = font.render('Нажмите пробел, чтобы продолжить', 0, 'white', 0)
     screen.blit(text, (w // 2 - text.get_rect().w // 2, 440))
 
-
     font = pygame.font.Font('data/fonts/casual.ttf', 10)
 
-    text = font.render('Игра создана в рамках проекта по Pygame для Яндекс лиция 2021-2022', 0, 'white', 0)
+    text = font.render(
+        'Игра создана в рамках проекта по Pygame для Яндекс лиция 2021-2022',
+        0, 'white', 0)
     screen.blit(text, (w // 2 - text.get_rect().w // 2, 500))
 
     im = pygame.image.load('data/happy_hero.png')
@@ -255,6 +269,7 @@ def congrats():
                 run = False
         pygame.display.update()
         clock.tick(10)
+
 
 def exit_diolog():
     exit_diolog = pygame_gui.windows.UIConfirmationDialog(
@@ -370,8 +385,9 @@ def intro():
 
             manager.process_events(event)
 
-        pygame.transform.scale(pygame.image.load(f'data/wallpapers/{wallpaper}').convert(),
-                               size, screen)
+        pygame.transform.scale(pygame.image.load(
+            f'data/wallpapers/{wallpaper}').convert(),
+            size, screen)
         manager.update(clock.tick(FPS) / 10)
         manager.draw_ui(screen)
         pygame.display.update()
@@ -451,7 +467,9 @@ def end_screen(level):
 
 
 def show_stats():
-    write_statistics()
+    old_d = read_statistics()
+    new_stats = compare_stats(old_d, data)
+
     header = pygame.font.Font('data/fonts/casual.ttf', 30)
     text = header.render('Статистика', 0, 'white', 0)
 
@@ -459,12 +477,10 @@ def show_stats():
     screen.fill(0)
     screen.blit(text, (w // 2 - t_rect.w // 2, 30))
 
-    with open('data/stats.json') as f:
-        statistic = json.load(f)
-    inj = f"Ранен: {statistic['injured']}"
-    deaths = f"Убит: {statistic['deaths']}"
-    t_in_g = f"Время в игре: {str(datetime.timedelta(seconds=statistic['time']))}"
-    
+    inj = f"Ранен: {new_stats['injured']}"
+    deaths = f"Убит: {new_stats['deaths']}"
+    t_in_g = f"Время в игре: {str(datetime.timedelta(seconds=new_stats['time']))}"
+
     font = pygame.font.Font(None, 30)
     for i, text in enumerate((inj, deaths, t_in_g)):
         text = font.render(text, 0, 'white', 0)
@@ -475,10 +491,9 @@ def show_stats():
     t_rect = text.get_rect()
     screen.blit(text, (w // 2 - t_rect.w // 2, 200))
 
-    for k, v in statistic['levels'].items():
+    for k, v in new_stats['levels'].items():
         text = font.render(f'уровень {k}:   {v}', 0, 'white', 0)
         screen.blit(text, (40, int(k) * 30 + 210))
-
 
     # screen.fill(0)
     manager.clear_and_reset()
@@ -498,6 +513,7 @@ def show_stats():
         manager.draw_ui(screen)
         pygame.display.update()
         clock.tick(FPS)
+
 
 def load_map(filename):
     lines = open(filename).readlines()
@@ -580,3 +596,4 @@ level_time = pygame.time.Clock()
 group_all = pygame.sprite.Group()
 
 draw_map(intro())
+
